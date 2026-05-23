@@ -26,6 +26,7 @@ FPS = 60
 CANVAS_BACKGROUND = (255, 255, 255, 255)
 CANVAS_BORDER = (228, 130, 1, 255)
 SLIDER_VALUE_COLOR = (253, 211, 127)
+SIDEBAR_BORDER_WIDTH = 4
 APP_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
 ASSETS_DIR = os.path.join(APP_DIR, "assets")
 SAVE_DIR = os.path.join(ASSETS_DIR, "saved")
@@ -308,7 +309,7 @@ def main() -> None:
                 slider_rect.width,
                 slider_rect.height,
                 min=1,
-                max=64,
+                max=32,
                 step=1,
                 valueColour=SLIDER_VALUE_COLOR,
             )
@@ -554,7 +555,12 @@ def main() -> None:
         pygame.draw.rect(screen, CANVAS_BACKGROUND[:3], pygame.Rect(
             0, 0, SIDEBAR_WIDTH, window_size[1]))
         pygame.draw.line(
-            screen, CANVAS_BORDER[:3], (SIDEBAR_WIDTH, 0), (SIDEBAR_WIDTH, window_size[1]), 2)
+            screen,
+            CANVAS_BORDER[:3],
+            (SIDEBAR_WIDTH, 0),
+            (SIDEBAR_WIDTH, window_size[1]),
+            SIDEBAR_BORDER_WIDTH,
+        )
         canvas_pos = (canvas_offset[0] + offset[0],
                       canvas_offset[1] + offset[1])
         pygame.draw.rect(

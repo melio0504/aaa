@@ -170,3 +170,4 @@ def draw_overlay(
                 midtop=(overlay_rect.centerx, info_y + line_index * 20)
             )
             screen.blit(text_surface, text_rect)
+            line_index += 1

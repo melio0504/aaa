@@ -50,7 +50,7 @@ class ToolState:
         self.adjust_thickness(-1)
 
     def adjust_thickness(self, delta: int) -> None:
-        self.thickness = max(1, min(64, self.thickness + delta))
+        self.thickness = max(1, min(32, self.thickness + delta))
 
     def toggle_eraser(self) -> None:
         self.eraser = not self.eraser
