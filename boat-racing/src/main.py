@@ -1,3 +1,4 @@
+import os
 import sys
 
 import pygame
@@ -7,7 +8,7 @@ from player import AIPlayer, Player
 from track import Track
 
 
-def draw_hud(surface, font, timer_font, players, elapsed, scores, target_wins):
+def draw_hud(surface, font, timer_font, score_font, players, elapsed, scores, target_wins):
     y = 10
     for idx, player in enumerate(players, start=1):
         boat = player.boat
@@ -21,11 +22,10 @@ def draw_hud(surface, font, timer_font, players, elapsed, scores, target_wins):
     timer_label = timer_font.render(timer_text, True, (230, 230, 230))
     surface.blit(timer_label, (12, y + 6))
 
-    score_text = f"Score {scores['You']
-        }-{scores['AI']} (first to {target_wins})"
-    score_label = font.render(score_text, True, (230, 230, 230))
+    score_text = f"Score {scores['You']}-{scores['AI']} (first to {target_wins})"
+    score_label = score_font.render(score_text, True, (230, 230, 230))
     surface.blit(score_label, (surface.get_width() -
-                 score_label.get_width() - 12, 10))
+                 score_label.get_width() - 12, 8))
 
 
 def draw_button(surface, font, rect, text, is_hovered):
@@ -77,11 +77,18 @@ def draw_player_indicator(surface, font, boat):
 
 def main():
     pygame.init()
+    pygame.mixer.init()
     pygame.display.set_caption("Boat Racing")
 
-    width, height = 1280, 720
-    # allow maximizing / resizing
-    screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+    music_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "assets", "sounds", "bg.mp3")
+    )
+    pygame.mixer.music.load(music_path)
+    pygame.mixer.music.play(-1)
+
+    display_info = pygame.display.Info()
+    width, height = display_info.current_w, display_info.current_h
+    screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
     clock = pygame.time.Clock()
 
     track = Track(width, height)
@@ -126,13 +133,16 @@ def main():
         return {"You": 0, "AI": 0}
 
     def begin_round():
-        nonlocal countdown_start, state
+        nonlocal countdown_start, state, match_time, frozen_time
         reset_round()
         countdown_start = pygame.time.get_ticks()
+        match_time = 0.0
+        frozen_time = 0.0
         state = "countdown"
 
     font = pygame.font.SysFont("Arial", 20)
     timer_font = pygame.font.SysFont("Arial", 30)
+    score_font = pygame.font.SysFont("Arial", 36)
     title_font = pygame.font.SysFont("Arial", 44)
     button_font = pygame.font.SysFont("Arial", 24)
     countdown_font = pygame.font.SysFont("Arial", 84)
@@ -140,24 +150,35 @@ def main():
     win_target = 3
     start_ticks = pygame.time.get_ticks()
     state = "menu"
+    settings_prev_state = "menu"
     scores = {"You": 0, "AI": 0}
     result_message = ""
     countdown_start = 0
     countdown_seconds = 3
+    match_time = 0.0
+    frozen_time = 0.0
 
     running = True
     while running:
         dt = clock.tick(60) / 1000.0
-        if state in ("playing", "round_over"):
+        if state == "playing":
             elapsed = (pygame.time.get_ticks() - start_ticks) / 1000.0
+        elif state in ("round_over", "match_over"):
+            elapsed = frozen_time
         else:
             elapsed = 0.0
 
         mouse_pos = pygame.mouse.get_pos()
         menu_buttons = [
             (pygame.Rect(width // 2 - 140, height // 2 - 10, 280, 52), "Start"),
-                (pygame.Rect(width // 2 - 140, height // 2 + 58, 280, 52), "Quit"),
+            (pygame.Rect(width // 2 - 140, height // 2 + 58, 280, 52), "Quit"),
         ]
+        settings_buttons = [
+            (pygame.Rect(width // 2 - 160, height // 2 - 10, 320, 52), "Restart"),
+            (pygame.Rect(width // 2 - 160, height // 2 + 58, 320, 52), "Quit"),
+            (pygame.Rect(width // 2 - 160, height // 2 + 126, 320, 52), "Back"),
+        ]
+        settings_button = pygame.Rect(12, height - 60, 150, 44)
         round_over_buttons = [
             (pygame.Rect(width // 2 - 160, height // 2 - 10, 320, 52), "Next Round"),
                 (pygame.Rect(width // 2 - 160, height //
@@ -187,6 +208,18 @@ def main():
                         begin_round()
                     elif menu_buttons[1][0].collidepoint(event.pos):
                         running = False
+                elif state == "playing":
+                    if settings_button.collidepoint(event.pos):
+                        settings_prev_state = state
+                        state = "settings"
+                elif state == "settings":
+                    if settings_buttons[0][0].collidepoint(event.pos):
+                        scores = reset_match()
+                        begin_round()
+                    elif settings_buttons[1][0].collidepoint(event.pos):
+                        running = False
+                    elif settings_buttons[2][0].collidepoint(event.pos):
+                        state = settings_prev_state
                 elif state == "round_over":
                     if round_over_buttons[0][0].collidepoint(event.pos):
                         begin_round()
@@ -236,18 +269,32 @@ def main():
             if boat1.pos.x >= track.finish_x:
                 scores["You"] += 1
                 result_message = "You win the round!"
-                state = "match_over" if scores["You"] >= win_target else "round_over"
+                if scores["You"] >= win_target:
+                    match_time = elapsed
+                    frozen_time = elapsed
+                    state = "match_over"
+                else:
+                    frozen_time = elapsed
+                    state = "round_over"
             elif boat2.pos.x >= track.finish_x:
                 scores["AI"] += 1
                 result_message = "You lose the round!"
-                state = "match_over" if scores["AI"] >= win_target else "round_over"
+                if scores["AI"] >= win_target:
+                    match_time = elapsed
+                    frozen_time = elapsed
+                    state = "match_over"
+                else:
+                    frozen_time = elapsed
+                    state = "round_over"
 
         track.draw(screen)
         for player in players:
             player.draw(screen)
         draw_player_indicator(screen, indicator_font, boat1)
-        draw_hud(screen, font, timer_font, players,
+        draw_hud(screen, font, timer_font, score_font, players,
                  elapsed, scores, win_target)
+        draw_button(screen, button_font, settings_button, "Settings",
+                    settings_button.collidepoint(mouse_pos))
 
         if state == "menu":
             draw_overlay(screen, title_font, button_font,
@@ -259,6 +306,9 @@ def main():
                     "Space/Enter to start. R restarts a round.",
             ]
             draw_menu_instructions(screen, font, menu_lines)
+        elif state == "settings":
+            draw_overlay(screen, title_font, button_font,
+                         "Settings", settings_buttons, mouse_pos)
         elif state == "countdown":
             remaining = max(0, countdown_seconds - \
                             (pygame.time.get_ticks() - countdown_start) / 1000.0)
@@ -266,7 +316,7 @@ def main():
                 str(int(remaining) + 1), True, (250, 235, 170))
             screen.blit(
                 count_label,
-                (width // 2 - count_label.get_width() // 2, height // 2 - count_label.get_height() // 2),
+                (width // 2 - count_label.get_width() // 2, 20),
             )
         elif state == "round_over":
             draw_overlay(screen, title_font, button_font,

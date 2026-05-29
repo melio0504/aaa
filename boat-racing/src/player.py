@@ -33,7 +33,8 @@ class Player:
 		self._last_left = left_pressed
 		self._last_right = right_pressed
 
-		self.paddle_power = max(0.0, self.paddle_power - 0.8 * dt)
+		decay = 2.5 if not (left_pressed or right_pressed) else 0.8
+		self.paddle_power = max(0.0, self.paddle_power - decay * dt)
 		throttle = min(1.0, self.paddle_power)
 		self.boat.update(dt, throttle, 0.0)
 

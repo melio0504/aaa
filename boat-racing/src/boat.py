@@ -30,7 +30,7 @@ class Boat:
 			try:
 				image = pygame.image.load(str(asset_path)).convert_alpha()
 				image = pygame.transform.flip(image, False, True)
-				self.sprite = pygame.transform.smoothscale(image, (72, 72))
+				self.sprite = pygame.transform.smoothscale(image, (96, 96))
 			except pygame.error:
 				self.sprite = None
 
