@@ -31,6 +31,8 @@ APP_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
 ASSETS_DIR = os.path.join(APP_DIR, "assets")
 SAVE_DIR = os.path.join(ASSETS_DIR, "saved")
 FONT_PATH = os.path.join(ASSETS_DIR, "font", "Stardew Valley ALL CAPS.ttf")
+LOGO_PATH = os.path.join(ASSETS_DIR, "logo.jpeg")
+LOGO_MAX_WIDTH = SIDEBAR_WIDTH
 
 
 def load_font(path: str, size: int) -> pygame.font.Font:
@@ -42,7 +44,7 @@ def load_font(path: str, size: int) -> pygame.font.Font:
 
 def init_pygame() -> Tuple[pygame.Surface, pygame.time.Clock, pygame.font.Font, pygame.font.Font]:
     pygame.init()
-    pygame.display.set_caption("Etch a Sketch")
+    pygame.display.set_caption("Ateliera - Drawing and Painting App")
     screen = pygame.display.set_mode(WINDOW_SIZE, pygame.RESIZABLE)
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("DejaVu Sans", 16)
@@ -193,6 +195,7 @@ def main() -> None:
     init_background_music(assets_dir)
     bg_path = os.path.join(assets_dir, "bg.jpeg")
     brush_path = os.path.join(assets_dir, "brushes", "paintbrush.png")
+    logo_path = LOGO_PATH
     try:
         bg_source = pygame.image.load(bg_path).convert()
         bg_image = pygame.transform.smoothscale(bg_source, window_size)
@@ -207,6 +210,15 @@ def main() -> None:
         pygame.mouse.set_visible(False)
     except Exception:
         brush_image = None
+    try:
+        logo_source = pygame.image.load(logo_path).convert()
+        source_width, source_height = logo_source.get_size()
+        scale_width = max(1, LOGO_MAX_WIDTH)
+        scale_height = max(1, int(scale_width * (source_height / source_width)))
+        logo_image = pygame.transform.smoothscale(
+            logo_source, (scale_width, scale_height))
+    except Exception:
+        logo_image = None
 
     pen_pos = (GRID_SIZE // 2, GRID_SIZE // 2)
     shake_frames = 0
@@ -593,8 +605,12 @@ def main() -> None:
             knobs,
             info,
             overlay_rect,
-            "BUTIAL",
+            None,
         )
+
+        if logo_image:
+            logo_rect = logo_image.get_rect(topleft=(0, 0))
+            screen.blit(logo_image, logo_rect)
 
         brush_label = f"Brush Size: {tool_state.thickness}"
         label_surface = large_font.render(brush_label, True, (0, 0, 0))

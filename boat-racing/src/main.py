@@ -22,7 +22,7 @@ def draw_hud(surface, font, timer_font, score_font, players, elapsed, scores, ta
     timer_label = timer_font.render(timer_text, True, (230, 230, 230))
     surface.blit(timer_label, (12, y + 6))
 
-    score_text = f"Score {scores['You']}-{scores['AI']} (first to {target_wins})"
+    score_text = f"Score {scores['You']}-{scores['AI']} (Best of {target_wins})"
     score_label = score_font.render(score_text, True, (230, 230, 230))
     surface.blit(score_label, (surface.get_width() -
                  score_label.get_width() - 12, 8))
@@ -75,10 +75,24 @@ def draw_player_indicator(surface, font, boat):
     surface.blit(label, (center[0] - label.get_width() // 2, center[1] - 60))
 
 
+def scale_logo(logo_surface, max_width):
+    if logo_surface is None:
+        return None
+    width = logo_surface.get_width()
+    height = logo_surface.get_height()
+    if width <= 0 or height <= 0:
+        return None
+    scale = min(1.0, max_width / width)
+    target_size = (int(width * scale), int(height * scale))
+    if target_size[0] <= 0 or target_size[1] <= 0:
+        return None
+    return pygame.transform.smoothscale(logo_surface, target_size)
+
+
 def main():
     pygame.init()
     pygame.mixer.init()
-    pygame.display.set_caption("Boat Racing")
+    pygame.display.set_caption("Mission Impaddle - Boat Racing")
 
     music_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "assets", "sounds", "bg.mp3")
@@ -90,6 +104,17 @@ def main():
     width, height = display_info.current_w, display_info.current_h
     screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
     clock = pygame.time.Clock()
+
+    logo_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "assets", "images", "logo.png")
+    )
+    logo_original = None
+    if os.path.exists(logo_path):
+        try:
+            logo_original = pygame.image.load(logo_path).convert_alpha()
+        except pygame.error:
+            logo_original = None
+    logo_surface = scale_logo(logo_original, min(520, int(width * 0.45)))
 
     track = Track(width, height)
     boat1 = Boat(track.start_positions[0], (230, 80, 70), name="You")
@@ -250,6 +275,7 @@ def main():
                 screen = pygame.display.set_mode(
                     (width, height), pygame.RESIZABLE)
                 track = Track(width, height)
+                logo_surface = scale_logo(logo_original, min(520, int(width * 0.45)))
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
@@ -297,18 +323,20 @@ def main():
                     settings_button.collidepoint(mouse_pos))
 
         if state == "menu":
-            draw_overlay(screen, title_font, button_font,
-                         "Boat Racing", menu_buttons, mouse_pos)
-            menu_lines = [
-                "Press A/D or Left/Right to paddle.",
-                    "Tap alternating keys to build speed.",
-                    "Reach the finish line before the AI.",
-                    "Space/Enter to start. R restarts a round.",
-            ]
-            draw_menu_instructions(screen, font, menu_lines)
+            draw_overlay(screen, title_font, button_font, "", menu_buttons, mouse_pos)
+            if logo_surface is not None:
+                screen.blit(
+                    logo_surface,
+                    (width // 2 - logo_surface.get_width() // 2, 36),
+                )
         elif state == "settings":
             draw_overlay(screen, title_font, button_font,
                          "Settings", settings_buttons, mouse_pos)
+            if logo_surface is not None:
+                screen.blit(
+                    logo_surface,
+                    (width // 2 - logo_surface.get_width() // 2, 36),
+                )
         elif state == "countdown":
             remaining = max(0, countdown_seconds - \
                             (pygame.time.get_ticks() - countdown_start) / 1000.0)
@@ -321,10 +349,20 @@ def main():
         elif state == "round_over":
             draw_overlay(screen, title_font, button_font,
                          result_message, round_over_buttons, mouse_pos)
+            if logo_surface is not None:
+                screen.blit(
+                    logo_surface,
+                    (width // 2 - logo_surface.get_width() // 2, 36),
+                )
         elif state == "match_over":
             final_message = "You win the match!" if scores["You"] >= win_target else "You lose the match!"
             draw_overlay(screen, title_font, button_font,
                          final_message, result_buttons, mouse_pos)
+            if logo_surface is not None:
+                screen.blit(
+                    logo_surface,
+                    (width // 2 - logo_surface.get_width() // 2, 36),
+                )
 
         pygame.display.flip()
 
